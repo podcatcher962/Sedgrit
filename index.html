@@ -81,7 +81,7 @@ textarea:focus{border-color:#4a618a;box-shadow:0 0 0 3px rgba(74,97,138,.2)}
     <a onclick="openHow()"><span class="ic">?</span><span id="lblHow">说明</span></a>
   </div>
 </header>
-<div class="hint" id="hint">远处是森林与木屋 · 近处是你的石头 · 湖面可点涟漪，石头可拖动</div>
+<div class="hint" id="hint">石头从空中落入湖心 · 泛起涟漪 · 沉入看不见的深处</div>
 <div id="events"></div>
 <div id="stats">
   <span>砾石 <b id="stN">0</b></span>
@@ -143,12 +143,12 @@ textarea:focus{border-color:#4a618a;box-shadow:0 0 0 3px rgba(74,97,138,.2)}
 <div class="modal" id="mHow">
   <div class="card">
     <h3>沉砾 · 说明</h3>
-    <p>瓦尔登湖边的湖：远处是森林、远山与一栋木屋（宏大）；近处是清澈浅滩，你的石头一块块沉在湖床上（细微）。石头经真实时间压实，终成基岩——湖水退去那天，基岩上会立起一株树。</p>
+    <p>瓦尔登湖边的湖：远处是森林、远山与一栋木屋；眼前是整片湖面。每一次"不逃"——写一句真实、安静坐一会儿、今天到场——都有一块石头从空中落入湖心，泛起涟漪，然后沉入看不见的深处。它们没有消失，只是沉积在你看不见的地方。</p>
+    <p>当石头积累到 <b style="color:#e0bd7a">20 块</b>，湖水会退去——那时你会第一次看见，它们已经在湖底压成了基岩。</p>
     <p><b style="color:#e0bd7a">这不是游戏。</b>无奖励、无成就、无红点。可以不打开，石头仍在；几天不来，只是沉积得更深。</p>
-    <p class="sub">· 拖动湖床上的石头，可以触摸它们<br>
-    · 点击湖面，泛起涟漪；水滴会落进水里<br>
-    · 静坐时湖水与风声会慢慢安静下来<br>
-    · 湖声为程序化合成：水波 · 风 · 远鸟<br>
+    <p class="sub">· 点击湖面，泛起涟漪；点击天空，惊起飞鸟<br>
+    · 静坐时湖水与鸟鸣会慢慢安静下来<br>
+    · 湖声为真实录音：水波 · 鸟鸣<br>
     · 数据只存本机，不上传、不联网、零追踪<br>
     · 与「清欢 GentleJoy」互为姊妹：清欢给光，沉砾接住暗<br>
     · 本工具是自我觉察的辅助载体，不替代心理咨询或治疗</p>
@@ -255,13 +255,9 @@ const THRESH = 20;
 /* ============ Matter 物理 ============ */
 const canvas = document.getElementById('lake');
 const ctx = canvas.getContext('2d');
-let W=0, H=0, SURFACE=0, LAKEBED=0;
-const engine = Matter.Engine.create({ enableSleeping:true });
-engine.gravity.y = 0.72;
-const world = engine.world;
-let ground = null, stonesBodies = [], ripples = [], bubbles = [];
+let W=0, H=0, SURFACE=0;
+let ripples = [], bubbles = [];
 let still = 0;
-let mouse = null, mouseConstraint = null;
 let birds = [];        // 飞鸟
 let sparkles = [];     // 光点特效
 
@@ -271,41 +267,43 @@ function resize(){
   H = window.innerHeight || canvas.clientHeight || 600;
   canvas.width = W*dpr; canvas.height = H*dpr;
   ctx.setTransform(dpr,0,0,dpr,0,0);
-  SURFACE = H*0.62;      // 湖面线：远景（森林远山木屋天空）占 62%，人站岸上低头看湖
-  LAKEBED = H*0.90;      // 湖床：底部一条窄带，石头隐约
-  if(ground){ Matter.Composite.remove(world, ground); }
-  ground = Matter.Bodies.rectangle(W/2, H+50, W*2, 100, { isStatic:true, friction:0.98, restitution:0 });
-  Matter.Composite.add(world, ground);
-  if(mouseConstraint){ Matter.Composite.remove(world, mouseConstraint); }
-  mouse = Matter.Mouse.create(canvas);
-  mouseConstraint = Matter.MouseConstraint.create(engine, { mouse, constraint:{ stiffness:0.06, damping:0.1 } });
-  Matter.Composite.add(world, mouseConstraint);
+  SURFACE = H*0.62;      // 湖面线：远景（森林远山木屋天空）占 62%，湖面在下方
 }
 window.addEventListener('resize', resize);
 
-/* ============ 落石 ============ */
+/* ============ 落石：空中落下 → 入水涟漪 → 沉没 ============ */
 let stoneSeq = 0;
-function makeBody(rec){
-  if(stonesBodies.length > 200) return null;
-  const sides = 6 + Math.floor(Math.random()*3);
-  const r = Math.max(12, rec.size*26);       // 石头更大
-  const x = W*(0.12 + Math.random()*0.76);
-  const body = Matter.Bodies.polygon(x, SURFACE - 20, sides, r, {
-    friction:0.98, restitution:0.04, frictionAir:0.05, density:0.0035,
-    chamfer:{ radius: Math.max(2, r*0.14) }
-  });
-  Matter.Body.scale(body, 0.88+Math.random()*0.26, 0.88+Math.random()*0.26);
-  body.sed = rec;
-  Matter.Composite.add(world, body);
-  return body;
-}
+let fallingStones = [];   // {x, y, vy, r, img, rec, phase, t, angle, vrot}
 function spawnStone(rec){
-  const body = makeBody(rec);
-  if(!body) return;
-  stonesBodies.push(body);
-  splash(body.position.x, SURFACE + 8);
+  const r = Math.max(13, rec.size*24);       // 石头更大
+  fallingStones.push({
+    x: W*(0.12 + Math.random()*0.76),
+    y: SURFACE - 60 - Math.random()*80,       // 从空中落下
+    vy: 0,
+    r, img: imgFor(rec.type, rec.neg),
+    rec, phase: 'fall', t: 0,
+    angle: Math.random()*6.28, vrot: (Math.random()-0.5)*0.07
+  });
   event(rec.type==='write' ? '它沉下去了' : rec.type==='sit' ? '沉默之石 · ' + (rec.dur||'') + ' 分钟' : '今日到场');
-  if(audioCtx) splashSound();
+}
+function updateFalling(){
+  for(let i=fallingStones.length-1;i>=0;i--){
+    const st = fallingStones[i];
+    st.t += 1;
+    st.angle += st.vrot;
+    if(st.phase === 'fall'){
+      st.vy += 0.42;                          // 重力
+      st.y += st.vy;
+      if(st.y >= SURFACE + st.r*0.25){        // 触水
+        st.phase = 'sink';
+        splash(st.x, SURFACE + 6);            // 泛起涟漪
+        if(audioCtx) splashSound();
+      }
+    } else {                                  // sink：继续下沉 + 淡出
+      st.y += st.vy*0.5; st.vy *= 0.96;
+      if(st.t > 55) fallingStones.splice(i,1);
+    }
+  }
 }
 function splash(x, y){
   for(let i=0;i<12;i++){
@@ -448,14 +446,15 @@ let waldenReady = false;
 walden.onload = ()=>{ waldenReady = true; };
 function draw(){
   ctx.clearRect(0,0,W,H);
-  drawSkyline();     // 远景：天空 · 森林 · 远山 · 木屋
-  drawTree();        // 基岩后的树
-  drawWater();       // 湖水 · 倒影 · 波光
-  drawStones();      // 近岸湖床上的石头
-  drawParticles();   // 涟漪 · 气泡
-  drawBirds();       // 飞鸟
-  drawSparkles();    // 光点
-  drawShore();       // 湖岸水色
+  updateFalling();     // 落石动画（空中 → 入水 → 沉没）
+  drawSkyline();       // 远景：天空 · 森林 · 远山 · 木屋
+  drawTree();          // 基岩后的树
+  drawWater();         // 湖水 · 倒影 · 波光
+  drawStones();        // 落水中的石头
+  drawParticles();     // 涟漪 · 气泡
+  drawBirds();         // 飞鸟
+  drawSparkles();      // 光点
+  drawShore();         // 湖岸线
   checkBedrock();
   requestAnimationFrame(draw);
 }
@@ -522,11 +521,11 @@ function drawSkyline(){
 }
 function drawTree(){
   if(bedrockT < 1) return;
-  const cx = W*0.5, baseY = LAKEBED + 6;
+  const cx = W*0.5, baseY = SURFACE + 14;      // 树从湖岸长起
   const days = S.bedrockAt ? Math.max(0, (Date.now()-S.bedrockAt)/864e5) : 0;
   const target = Math.min(1, 0.4 + days*0.06);
   treeH += (target - treeH)*0.01;
-  const h = (LAKEBED - SURFACE + SURFACE*0.28)*treeH;   // 从湖床长到湖面上方一点
+  const h = SURFACE*0.9*treeH;                 // 长入远景
   if(h < 4) return;
   const comp = avgComp();
   const sway = (1-comp*0.85)*0.018*Math.sin(Date.now()/1500);
@@ -551,14 +550,16 @@ function drawTree(){
   ctx.restore();
 }
 function drawWater(){
-  const waterA = 0.85*(1-bedrockT);
+  const waterA = 0.92*(1-bedrockT);
   if(waterA < 0.02) return;
-  /* 湖水：单一深蓝渐变，近底略清让石头隐约可见（不再写实湖底） */
+  /* 湖水：不透明深蓝（正常视角看不到湖底，石头入水即隐没） */
   const g = ctx.createLinearGradient(0,SURFACE,0,H);
-  g.addColorStop(0,'rgba(24,46,78,'+waterA*0.9+')');
-  g.addColorStop(0.5,'rgba(16,32,58,'+waterA*0.72+')');
-  g.addColorStop(1,'rgba(12,24,44,'+waterA*0.42+')');
+  g.addColorStop(0,'rgba(26,50,84,1)');
+  g.addColorStop(0.5,'rgba(17,34,60,1)');
+  g.addColorStop(1,'rgba(11,22,42,1)');
+  ctx.globalAlpha = waterA;
   ctx.fillStyle = g; ctx.fillRect(0,SURFACE,W,H-SURFACE);
+  ctx.globalAlpha = 1;
   /* 倒影：远景镜像 + 扰动 */
   if(waldenReady && walden.naturalWidth && waterA > 0.15){
     const sh = walden.naturalHeight * 0.5;
@@ -573,9 +574,9 @@ function drawWater(){
     ctx.restore();
     ctx.globalAlpha = 1;
   }
-  /* 波光：动态光点，只在湖面带内（SURFACE ~ LAKEBED） */
+  /* 波光：动态光点，只在水面上（SURFACE ~ H） */
   const n = Math.floor(W/70);
-  const lakeH = LAKEBED - SURFACE;
+  const lakeH = H - SURFACE;
   for(let i=0;i<n;i++){
     const seed = i*97;
     const bx = ((seed + Math.sin(Date.now()*0.0005 + i)*46) % W + W) % W;
@@ -591,32 +592,24 @@ function drawWater(){
   }
 }
 function drawStones(){
-  const waterA = 0.85*(1-bedrockT);
-  for(const b of stonesBodies){
-    const st = b.sed; if(!st) continue;
-    const comp = compOf(st);
-    const img = imgFor(st.type, st.neg);
+  for(const st of fallingStones){
+    const img = st.img;
     if(!img.complete || !img.naturalWidth) continue;
+    let a = 1;
+    if(st.phase === 'fall'){
+      a = Math.min(1, (SURFACE - st.y)/40 + 0.3);   // 空中渐现
+    } else {
+      a = Math.max(0, 1 - (st.t-10)/55);            // 入水后淡出
+    }
+    if(a <= 0.02) continue;
     ctx.save();
-    ctx.translate(b.position.x, b.position.y + comp*3);
-    ctx.rotate(b.angle);
-    ctx.globalAlpha = (1 - comp*0.35) * (0.6 + 0.15*waterA);   // 朦胧隐约
-    ctx.beginPath();
-    const vs = b.vertices;
-    ctx.moveTo(vs[0].x-b.position.x, vs[0].y-b.position.y);
-    for(let i=1;i<vs.length;i++) ctx.lineTo(vs[i].x-b.position.x, vs[i].y-b.position.y);
-    ctx.closePath(); ctx.clip();
-    const bb = b.bounds;
-    const w2 = bb.max.x-bb.min.x, h2 = bb.max.y-bb.min.y;
+    ctx.translate(st.x, st.y);
+    ctx.rotate(st.angle);
+    ctx.globalAlpha = a;
+    const w2 = st.r*2, h2 = st.r*2;
+    ctx.beginPath(); ctx.arc(0, 0, st.r, 0, 7); ctx.closePath(); ctx.clip();
     ctx.drawImage(img, -w2/2, -h2/2, w2, h2);
     ctx.globalAlpha = 1;
-    ctx.globalAlpha = waterA*0.14;
-    ctx.fillStyle = '#1a3a6a'; ctx.fill();
-    ctx.globalAlpha = 1;
-    if(b === mouseConstraint.body && mouseConstraint.mouse.button === -1){
-      ctx.strokeStyle = 'rgba(224,189,122,0.5)';
-      ctx.lineWidth = 2; ctx.stroke();
-    }
     ctx.restore();
   }
 }
@@ -639,7 +632,7 @@ function drawParticles(){
   }
 }
 function drawShore(){
-  /* 湖面线高光 */
+  /* 湖面线高光（水岸交界） */
   const amp = 2.4*(1-still*0.85);
   ctx.beginPath();
   ctx.moveTo(0, SURFACE);
@@ -648,12 +641,6 @@ function drawShore(){
   }
   ctx.strokeStyle = 'rgba(130,165,205,'+(0.5*(1-still*0.6))+')';
   ctx.lineWidth = 1.3; ctx.stroke();
-  /* 湖床：极淡深水色（石头在其中隐约可见，不写实） */
-  const sg = ctx.createLinearGradient(0, LAKEBED, 0, H);
-  sg.addColorStop(0,'rgba(16,30,52,'+(0.5*(1-bedrockT*0.7))+')');
-  sg.addColorStop(1,'rgba(10,20,38,'+(0.7*(1-bedrockT*0.7))+')');
-  ctx.fillStyle = sg;
-  ctx.fillRect(0, LAKEBED, W, H-LAKEBED);
 }
 
 /* ============ 互动 ============ */
@@ -663,22 +650,11 @@ canvas.addEventListener('mousedown', e=>{
   if(y < SURFACE + 10){           // 点击天空/远山：惊起飞鸟
     spawnBird();
     ripple(x, y, false);
-  } else if(y < SURFACE + 60){    // 点击湖面：涟漪
+  } else {                        // 点击湖面：涟漪
     ripple(x, y, false);
     if(audioCtx && sndOn) splashSound();
   }
 });
-let lastDragRipple = 0;
-setInterval(()=>{
-  /* 拖动石头：拖尾涟漪 */
-  if(mouseConstraint && mouseConstraint.body && Date.now() - lastDragRipple > 120){
-    const p = mouseConstraint.body.position;
-    if(p.y > SURFACE){
-      ripple(p.x, p.y, false);
-      lastDragRipple = Date.now();
-    }
-  }
-}, 100);
 
 /* ============ UI ============ */
 function showModal(id){ document.getElementById(id).classList.add('show'); }
@@ -704,17 +680,10 @@ function resetAll(){
 resize();
 initAudio();
 if(sndOn){ const el = document.getElementById('lblSound'); el.textContent = '湖的声音'; }
-setTimeout(()=>{
-  for(const st of S.stones){
-    const body = makeBody(st);
-    if(body) Matter.Body.setPosition(body, { x: W*(0.12+Math.random()*0.76), y: SURFACE - 6 });
-  }
-}, 60);
 refreshStats();
 requestAnimationFrame(draw);
-setInterval(()=>{ Matter.Engine.update(engine, 1000/60); }, 1000/60);
 setTimeout(()=>{
-  if(!S.stones.length) event('湖底空着 · 等第一块石头');
+  if(!S.stones.length) event('湖面平静 · 等第一块石头');
 }, 1000);
 </script>
 </body>
