@@ -306,8 +306,8 @@ function resize(){
   H = window.innerHeight || canvas.clientHeight || 600;
   canvas.width = W*dpr; canvas.height = H*dpr;
   ctx.setTransform(dpr,0,0,dpr,0,0);
-  SURFACE = H*0.30;      // 湖面线（远景森林下缘，远景更开阔）
-  LAKEBED = H*0.86;      // 近岸湖床（压成底部一条，隐约可见）
+  SURFACE = H*0.62;      // 湖面线：远景（森林远山木屋天空）占 62%，人站岸上低头看湖
+  LAKEBED = H*0.90;      // 湖床：底部一条窄带，石头隐约
   if(ground){ Matter.Composite.remove(world, ground); }
   ground = Matter.Bodies.rectangle(W/2, H+50, W*2, 100, { isStatic:true, friction:0.98, restitution:0 });
   Matter.Composite.add(world, ground);
@@ -561,7 +561,7 @@ function drawTree(){
   const days = S.bedrockAt ? Math.max(0, (Date.now()-S.bedrockAt)/864e5) : 0;
   const target = Math.min(1, 0.4 + days*0.06);
   treeH += (target - treeH)*0.01;
-  const h = (SURFACE*0.9)*treeH;
+  const h = (LAKEBED - SURFACE + SURFACE*0.28)*treeH;   // 从湖床长到湖面上方一点
   if(h < 4) return;
   const comp = avgComp();
   const sway = (1-comp*0.85)*0.018*Math.sin(Date.now()/1500);
@@ -608,12 +608,13 @@ function drawWater(){
     ctx.restore();
     ctx.globalAlpha = 1;
   }
-  /* 波光：动态光点，只在湖面中上部（不铺满） */
+  /* 波光：动态光点，只在湖面带内（SURFACE ~ LAKEBED） */
   const n = Math.floor(W/70);
+  const lakeH = LAKEBED - SURFACE;
   for(let i=0;i<n;i++){
     const seed = i*97;
     const bx = ((seed + Math.sin(Date.now()*0.0005 + i)*46) % W + W) % W;
-    const by = SURFACE + ((seed*0.7 + Math.sin(Date.now()*0.0004 + i*2)*30) % (H*0.4) + (H*0.4)) % (H*0.4);
+    const by = SURFACE + ((seed*0.7 + Math.sin(Date.now()*0.0004 + i*2)*30) % lakeH + lakeH) % lakeH;
     const a = (0.14 + 0.09*Math.sin(Date.now()/1500 + i*3)) * (1-still*0.7);
     if(a < 0.03) continue;
     ctx.fillStyle = 'rgba(205,225,248,'+a+')';
