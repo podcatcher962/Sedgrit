@@ -503,15 +503,22 @@ function drawSkyline(){
   ctx.fillStyle = '#0c1322';
   ctx.fillRect(0,0,W,SURFACE+2);
   if(waldenReady && walden.naturalWidth){
-    /* 横版构图：取上部 65%（天空+森林+木屋带）铺满远景区 */
+    /* 横版构图：取上部 65%（天空+森林+木屋带）
+       高度固定到湖面线（避免宽屏下图片拉高越过湖面），宽度铺满，源图底部裁剪 */
     const sh = walden.naturalHeight * 0.65;
     const sw = walden.naturalWidth;
     const r = Math.max(W/sw, (SURFACE+6)/sh);
     const dw = sw*r, dh = sh*r;
-    ctx.drawImage(walden, 0, 0, sw, sh, (W-dw)/2, -6, dw, dh);
-    /* 木屋暖光呼吸 */
+    const dstH = SURFACE + 6;                       // 目标高度 = 湖面线
+    if(dh > dstH){
+      const srcH = sh * dstH / dh;                  // 宽屏：源图只取上部，裁掉湖面部分
+      ctx.drawImage(walden, 0, 0, sw, srcH, (W-dw)/2, -6, dw, dstH);
+    } else {
+      ctx.drawImage(walden, 0, 0, sw, sh, (W-dw)/2, -6, dw, dh);
+    }
+    /* 木屋暖光呼吸：木屋在原图上部 65% 取图区的相对高度 ≈ 54.5% */
     const a = 0.05 + 0.03*Math.sin(Date.now()/2400);
-    const wx = (821/1536)*W, wy = (363/1024)*SURFACE*1.0;
+    const wx = (821/1536)*W, wy = (363/665.6)*SURFACE*0.92;
     const wg = ctx.createRadialGradient(wx,wy,2, wx,wy, W*0.07);
     wg.addColorStop(0,'rgba(255,200,120,'+a+')');
     wg.addColorStop(1,'rgba(255,200,120,0)');
