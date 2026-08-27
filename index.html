@@ -191,41 +191,35 @@ function initAudio(){
   try{
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     masterGain = audioCtx.createGain();
-    masterGain.gain.value = sndOn ? 0.22 : 0;
+    masterGain.gain.value = sndOn ? 0.12 : 0;
     masterGain.connect(audioCtx.destination);
-    /* 1. 水波：粉噪通过低通，慢 LFO 起伏（浪涌感） */
+    /* 1. 空灵 pad：A2+E3+A3 五度八度三角波，极慢呼吸（空山之感） */
+    const padG = audioCtx.createGain(); padG.gain.value = 0.0;
+    [110, 164.81, 220].forEach((f, i) => {
+      const o = audioCtx.createOscillator(); o.type = 'triangle'; o.frequency.value = f;
+      o.detune.value = (i-1)*3.5;
+      const g = audioCtx.createGain(); g.gain.value = 0.5;
+      o.connect(g); g.connect(padG);
+      o.start();
+    });
+    const plfo = audioCtx.createOscillator(); plfo.frequency.value = 0.04;
+    const plg = audioCtx.createGain(); plg.gain.value = 0.28;
+    plfo.connect(plg); plg.connect(padG.gain);
+    padG.connect(masterGain); plfo.start();
+    /* 2. 极轻水声：粉噪低通 200Hz，音量低，浪涌很缓（几乎不可察的底色） */
     const wb = audioCtx.createBuffer(1, audioCtx.sampleRate*3, audioCtx.sampleRate);
     const wd = wb.getChannelData(0);
     let last = 0;
     for(let i=0;i<wd.length;i++){ const w = Math.random()*2-1; last = (last + 0.02*w)/1.02; wd[i] = last*3.5; }
     const wsrc = audioCtx.createBufferSource(); wsrc.buffer = wb; wsrc.loop = true;
-    const wf = audioCtx.createBiquadFilter(); wf.type='lowpass'; wf.frequency.value = 320; wf.Q.value = 0.6;
-    const wg = audioCtx.createGain(); wg.gain.value = 0.5;
-    const wlfo = audioCtx.createOscillator(); wlfo.frequency.value = 0.07;
-    const wlg = audioCtx.createGain(); wlg.gain.value = 0.3;
+    const wf = audioCtx.createBiquadFilter(); wf.type='lowpass'; wf.frequency.value = 200;
+    const wg = audioCtx.createGain(); wg.gain.value = 0.1;
+    const wlfo = audioCtx.createOscillator(); wlfo.frequency.value = 0.06;
+    const wlg = audioCtx.createGain(); wlg.gain.value = 0.06;
     wlfo.connect(wlg); wlg.connect(wg.gain);
     wsrc.connect(wf); wf.connect(wg); wg.connect(masterGain);
     wsrc.start(); wlfo.start();
-    /* 2. 风：白噪低通 + 更慢呼吸 */
-    const fb = audioCtx.createBuffer(1, audioCtx.sampleRate*3, audioCtx.sampleRate);
-    const fd = fb.getChannelData(0);
-    for(let i=0;i<fd.length;i++){ fd[i] = (Math.random()*2-1)*0.4; }
-    const fsrc = audioCtx.createBufferSource(); fsrc.buffer = fb; fsrc.loop = true;
-    const ff = audioCtx.createBiquadFilter(); ff.type='lowpass'; ff.frequency.value = 240;
-    const fg = audioCtx.createGain(); fg.gain.value = 0.35;
-    const flo = audioCtx.createOscillator(); flo.frequency.value = 0.045;
-    const flg = audioCtx.createGain(); flg.gain.value = 0.25;
-    flo.connect(flg); flg.connect(fg.gain);
-    fsrc.connect(ff); ff.connect(fg); fg.connect(masterGain);
-    fsrc.start(); flo.start();
-    /* 3. 低鸣 drone：55Hz + 82.5Hz 轻底 */
-    const dg = audioCtx.createGain(); dg.gain.value = 0.22;
-    const o1 = audioCtx.createOscillator(); o1.type='sine'; o1.frequency.value = 55;
-    const o2 = audioCtx.createOscillator(); o2.type='sine'; o2.frequency.value = 82.5;
-    const g2 = audioCtx.createGain(); g2.gain.value = 0.4;
-    o1.connect(dg); o2.connect(g2); g2.connect(dg); dg.connect(masterGain);
-    o1.start(); o2.start();
-    /* 4. 远鸟：随机啁啾 */
+    /* 3. 远鸟：稀疏、轻、高远（15-40 秒一次） */
     scheduleBird();
   }catch(e){ audioCtx = null; }
 }
@@ -233,25 +227,25 @@ function birdCall(){
   if(!audioCtx || !sndOn) return;
   try{
     const t = audioCtx.currentTime;
-    const n = 2 + Math.floor(Math.random()*3);
+    const n = 1 + Math.floor(Math.random()*2);
     for(let i=0;i<n;i++){
       const o = audioCtx.createOscillator();
       o.type = 'sine';
-      const f0 = 2000 + Math.random()*1500;
-      o.frequency.setValueAtTime(f0, t + i*0.22);
-      o.frequency.exponentialRampToValueAtTime(f0*0.55, t + i*0.22 + 0.16);
+      const f0 = 1800 + Math.random()*1200;
+      o.frequency.setValueAtTime(f0, t + i*0.3);
+      o.frequency.exponentialRampToValueAtTime(f0*0.6, t + i*0.3 + 0.14);
       const g = audioCtx.createGain();
-      g.gain.setValueAtTime(0, t + i*0.22);
-      g.gain.linearRampToValueAtTime(0.05 + Math.random()*0.03, t + i*0.22 + 0.03);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + i*0.22 + 0.16);
-      const hp = audioCtx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value = 1200;
+      g.gain.setValueAtTime(0, t + i*0.3);
+      g.gain.linearRampToValueAtTime(0.03 + Math.random()*0.02, t + i*0.3 + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + i*0.3 + 0.14);
+      const hp = audioCtx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value = 1400;
       o.connect(hp); hp.connect(g); g.connect(masterGain);
-      o.start(t + i*0.22); o.stop(t + i*0.22 + 0.2);
+      o.start(t + i*0.3); o.stop(t + i*0.3 + 0.18);
     }
   }catch(e){}
 }
 function scheduleBird(){
-  setTimeout(()=>{ birdCall(); scheduleBird(); }, 6000 + Math.random()*14000);
+  setTimeout(()=>{ birdCall(); scheduleBird(); }, 16000 + Math.random()*26000);
 }
 function splashSound(){
   if(!audioCtx || !sndOn) return;
@@ -274,7 +268,7 @@ function toggleSound(){
   try{ localStorage.setItem('sedgritSound', sndOn ? '1' : '0'); }catch(e){}
   const el = document.getElementById('lblSound');
   el.textContent = sndOn ? '湖的声音' : '静音';
-  if(masterGain) masterGain.gain.value = sndOn ? 0.22 : 0;
+  if(masterGain) masterGain.gain.value = sndOn ? 0.12 : 0;
 }
 
 /* ============ 数据 ============ */
@@ -303,6 +297,8 @@ const world = engine.world;
 let ground = null, stonesBodies = [], ripples = [], bubbles = [];
 let still = 0;
 let mouse = null, mouseConstraint = null;
+let birds = [];        // 飞鸟
+let sparkles = [];     // 光点特效
 
 function resize(){
   const dpr = Math.min(window.devicePixelRatio||1, 2);
@@ -310,8 +306,8 @@ function resize(){
   H = window.innerHeight || canvas.clientHeight || 600;
   canvas.width = W*dpr; canvas.height = H*dpr;
   ctx.setTransform(dpr,0,0,dpr,0,0);
-  SURFACE = H*0.34;      // 湖面线（远景森林下缘）
-  LAKEBED = H*0.72;      // 近岸湖床（浅滩）
+  SURFACE = H*0.30;      // 湖面线（远景森林下缘，远景更开阔）
+  LAKEBED = H*0.86;      // 近岸湖床（压成底部一条，隐约可见）
   if(ground){ Matter.Composite.remove(world, ground); }
   ground = Matter.Bodies.rectangle(W/2, H+50, W*2, 100, { isStatic:true, friction:0.98, restitution:0 });
   Matter.Composite.add(world, ground);
@@ -327,7 +323,7 @@ let stoneSeq = 0;
 function makeBody(rec){
   if(stonesBodies.length > 200) return null;
   const sides = 6 + Math.floor(Math.random()*3);
-  const r = Math.max(12, rec.size*19);
+  const r = Math.max(12, rec.size*26);       // 石头更大
   const x = W*(0.12 + Math.random()*0.76);
   const body = Matter.Bodies.polygon(x, SURFACE - 20, sides, r, {
     friction:0.98, restitution:0.04, frictionAir:0.05, density:0.0035,
@@ -347,10 +343,12 @@ function spawnStone(rec){
   if(audioCtx) splashSound();
 }
 function splash(x, y){
-  for(let i=0;i<10;i++){
-    bubbles.push({ x: x + (Math.random()-0.5)*30, y: y + Math.random()*10, r: 1.5+Math.random()*3, vy: -(0.6+Math.random()*1.2), t: 0 });
+  for(let i=0;i<12;i++){
+    bubbles.push({ x: x + (Math.random()-0.5)*34, y: y + Math.random()*12, r: 1.5+Math.random()*3.5, vy: -(0.7+Math.random()*1.4), t: 0 });
   }
   ripples.push({ x, y, r: 8, t: 0, big: true });
+  ripples.push({ x, y, r: 4, t: 0, big: true });
+  sparkle(x, y, 'rgb(210,228,248)');
 }
 function ripple(x, y, big){
   ripples.push({ x, y, r: big?4:2, t: 0, big: !!big });
@@ -429,6 +427,7 @@ function stopSit(done){
                   size: Math.min(3.2, 0.95 + min*0.14), dens:1.3, dur:min };
     S.stones.push(rec); S.sits += min; save();
     spawnStone(rec);
+    sparkle(W/2, SURFACE + 40, 'rgb(224,189,122)');
     event('沉默之石 · ' + min + ' 分钟');
   } else if(min < 1){
     event(min > 0 ? '太短了，未成石（至少 1 分钟）' : '静坐已取消');
@@ -489,9 +488,52 @@ function draw(){
   drawWater();       // 湖水 · 倒影 · 波光
   drawStones();      // 近岸湖床上的石头
   drawParticles();   // 涟漪 · 气泡
-  drawShore();       // 湖岸水草
+  drawBirds();       // 飞鸟
+  drawSparkles();    // 光点
+  drawShore();       // 湖岸水色
   checkBedrock();
   requestAnimationFrame(draw);
+}
+function spawnBird(){
+  const fromLeft = Math.random() > 0.5;
+  birds.push({ x: fromLeft ? -40 : W+40, y: SURFACE*(0.15+Math.random()*0.5),
+               vx: (fromLeft?1:-1)*(1.6+Math.random()*1.2), t: 0, seed: Math.random()*10, wing: 0 });
+  if(audioCtx && sndOn) birdCall();
+}
+function drawBirds(){
+  for(let i=birds.length-1;i>=0;i--){
+    const b = birds[i];
+    b.x += b.vx; b.t += 1; b.wing += 0.35;
+    b.y += Math.sin(b.t*0.05)*0.6;
+    if(b.x < -60 || b.x > W+60){ birds.splice(i,1); continue; }
+    ctx.save();
+    ctx.strokeStyle = 'rgba(30,42,60,0.75)';
+    ctx.lineWidth = 1.6; ctx.lineCap = 'round';
+    const flap = Math.sin(b.wing)*3;
+    /* 简笔飞鸟：两个弧线翅膀 */
+    ctx.beginPath();
+    ctx.moveTo(b.x-11, b.y - flap);
+    ctx.quadraticCurveTo(b.x-5, b.y+3, b.x, b.y);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(b.x+11, b.y - flap);
+    ctx.quadraticCurveTo(b.x+5, b.y+3, b.x, b.y);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+function sparkle(x, y, color){
+  sparkles.push({ x, y, color, r: 4, t: 0 });
+}
+function drawSparkles(){
+  for(let i=sparkles.length-1;i>=0;i--){
+    const s = sparkles[i];
+    s.r += 1.2; s.t += 1;
+    ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, 7);
+    ctx.strokeStyle = s.color.replace(')', ','+Math.max(0,0.5-s.t/30)+')').replace('rgb','rgba');
+    ctx.lineWidth = 1.4; ctx.stroke();
+    if(s.t > 30) sparkles.splice(i,1);
+  }
 }
 function drawSkyline(){
   ctx.fillStyle = '#0c1322';
@@ -546,12 +588,11 @@ function drawTree(){
 function drawWater(){
   const waterA = 0.85*(1-bedrockT);
   if(waterA < 0.02) return;
-  /* 湖水：从湖面线到湖底，近岸渐变清 */
+  /* 湖水：单一深蓝渐变，近底略清让石头隐约可见（不再写实湖底） */
   const g = ctx.createLinearGradient(0,SURFACE,0,H);
-  g.addColorStop(0,'rgba(28,52,86,'+waterA*0.85+')');
-  g.addColorStop(0.45,'rgba(20,40,70,'+waterA*0.7+')');
-  g.addColorStop(0.72,'rgba(16,34,58,'+waterA*0.4+')');
-  g.addColorStop(1,'rgba(14,30,50,'+waterA*0.22+')');   // 近岸清可见底
+  g.addColorStop(0,'rgba(24,46,78,'+waterA*0.9+')');
+  g.addColorStop(0.5,'rgba(16,32,58,'+waterA*0.72+')');
+  g.addColorStop(1,'rgba(12,24,44,'+waterA*0.42+')');
   ctx.fillStyle = g; ctx.fillRect(0,SURFACE,W,H-SURFACE);
   /* 倒影：远景镜像 + 扰动 */
   if(waldenReady && walden.naturalWidth && waterA > 0.15){
@@ -560,23 +601,23 @@ function drawWater(){
     const r = Math.max(W/sw, (H-SURFACE)*0.42/sh);
     const dw = sw*r, dh = sh*r;
     ctx.save();
-    ctx.globalAlpha = 0.26*waterA;
+    ctx.globalAlpha = 0.2*waterA;
     ctx.translate(0, SURFACE + (H-SURFACE)*0.5);
     ctx.scale(1,-1);
     ctx.drawImage(walden, 0, 0, sw, sh, (W-dw)/2, -6, dw, dh);
     ctx.restore();
     ctx.globalAlpha = 1;
   }
-  /* 波光：动态光点 */
-  const n = Math.floor(W/60);
+  /* 波光：动态光点，只在湖面中上部（不铺满） */
+  const n = Math.floor(W/70);
   for(let i=0;i<n;i++){
     const seed = i*97;
     const bx = ((seed + Math.sin(Date.now()*0.0005 + i)*46) % W + W) % W;
-    const by = SURFACE + ((seed*0.7 + Math.sin(Date.now()*0.0004 + i*2)*30) % (H-SURFACE) + (H-SURFACE)) % (H-SURFACE);
-    const a = (0.16 + 0.10*Math.sin(Date.now()/1500 + i*3)) * (1-still*0.7);
+    const by = SURFACE + ((seed*0.7 + Math.sin(Date.now()*0.0004 + i*2)*30) % (H*0.4) + (H*0.4)) % (H*0.4);
+    const a = (0.14 + 0.09*Math.sin(Date.now()/1500 + i*3)) * (1-still*0.7);
     if(a < 0.03) continue;
     ctx.fillStyle = 'rgba(205,225,248,'+a+')';
-    const s = 1.6 + (i%3)*1.1;
+    const s = 1.4 + (i%3)*0.9;
     ctx.save();
     ctx.translate(bx, by); ctx.rotate(i*0.7);
     ctx.fillRect(-s, -s*0.35, s*2, s*0.7);
@@ -593,7 +634,7 @@ function drawStones(){
     ctx.save();
     ctx.translate(b.position.x, b.position.y + comp*3);
     ctx.rotate(b.angle);
-    ctx.globalAlpha = (1 - comp*0.35) * (0.9 + 0.1*waterA);
+    ctx.globalAlpha = (1 - comp*0.35) * (0.6 + 0.15*waterA);   // 朦胧隐约
     ctx.beginPath();
     const vs = b.vertices;
     ctx.moveTo(vs[0].x-b.position.x, vs[0].y-b.position.y);
@@ -639,22 +680,12 @@ function drawShore(){
   for(let x=0;x<=W;x+=22){
     ctx.lineTo(x, SURFACE + Math.sin(x*0.02 + Date.now()*0.0011)*amp + Math.sin(x*0.007+Date.now()*0.0005)*amp*0.5);
   }
-  ctx.strokeStyle = 'rgba(130,165,205,'+(0.55*(1-still*0.6))+')';
+  ctx.strokeStyle = 'rgba(130,165,205,'+(0.5*(1-still*0.6))+')';
   ctx.lineWidth = 1.3; ctx.stroke();
-  /* 近岸水草 */
-  for(let i=0;i<14;i++){
-    const gx = (i*97 + 30) % W, gh = 8 + (i%3)*7;
-    ctx.strokeStyle = 'rgba(45,90,65,'+(0.4-still*0.2)+')';
-    ctx.lineWidth = 1.4;
-    ctx.beginPath();
-    ctx.moveTo(gx, LAKEBED + 24);
-    ctx.quadraticCurveTo(gx+3, LAKEBED+24-gh*0.6, gx + Math.sin(Date.now()/1600+i)*3, LAKEBED+24-gh);
-    ctx.stroke();
-  }
-  /* 湖床沙色（近岸） */
+  /* 湖床：极淡深水色（石头在其中隐约可见，不写实） */
   const sg = ctx.createLinearGradient(0, LAKEBED, 0, H);
-  sg.addColorStop(0,'rgba(60,72,88,'+(0.35*(1-bedrockT*0.8))+')');
-  sg.addColorStop(1,'rgba(42,52,66,0.55)');
+  sg.addColorStop(0,'rgba(16,30,52,'+(0.5*(1-bedrockT*0.7))+')');
+  sg.addColorStop(1,'rgba(10,20,38,'+(0.7*(1-bedrockT*0.7))+')');
   ctx.fillStyle = sg;
   ctx.fillRect(0, LAKEBED, W, H-LAKEBED);
 }
@@ -663,8 +694,26 @@ function drawShore(){
 canvas.addEventListener('mousedown', e=>{
   const rect = canvas.getBoundingClientRect();
   const x = e.clientX - rect.left, y = e.clientY - rect.top;
-  if(y < SURFACE + 30){ ripple(x, y, false); if(audioCtx && sndOn) splashSound(); }
+  if(y < SURFACE + 10){           // 点击天空/远山：惊起飞鸟
+    spawnBird();
+    ripple(x, y, false);
+    if(audioCtx && sndOn) birdCall();
+  } else if(y < SURFACE + 60){    // 点击湖面：涟漪
+    ripple(x, y, false);
+    if(audioCtx && sndOn) splashSound();
+  }
 });
+let lastDragRipple = 0;
+setInterval(()=>{
+  /* 拖动石头：拖尾涟漪 */
+  if(mouseConstraint && mouseConstraint.body && Date.now() - lastDragRipple > 120){
+    const p = mouseConstraint.body.position;
+    if(p.y > SURFACE){
+      ripple(p.x, p.y, false);
+      lastDragRipple = Date.now();
+    }
+  }
+}, 100);
 
 /* ============ UI ============ */
 function showModal(id){ document.getElementById(id).classList.add('show'); }
