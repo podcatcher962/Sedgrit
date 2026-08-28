@@ -719,22 +719,54 @@ function drawShore(){
   sg.addColorStop(1,'rgba(156,150,108,0.9)');
   ctx.fillStyle = sg;
   ctx.fillRect(0, shoreTop - 2, W, (shoreBot - shoreTop) + 10);
-  /* 石头垒砌的岸堤：沿岸线排一排错落小石 */
-  const nStone = Math.max(6, Math.floor(W/72));
+  /* 密实垒石岸堤：三层石块错缝堆叠（下大上小、近水湿暗、顶部干亮） */
   const t = Date.now();
-  for(let i=0;i<nStone;i++){
-    const sx = i*72 + ((i%3)-1)*10;
-    const sr = 5 + (i%4)*2.2;
-    const waveY = Math.sin(sx*0.016 + t*0.0006)*3 + Math.sin(sx*0.05)*2;
-    const sy = shoreTop + 4 + (i%3)*4 + waveY*0.5;
-    /* 石头：底色 + 顶光 + 微阴影 */
-    ctx.fillStyle = 'rgba(120,124,118,0.9)';
-    ctx.beginPath(); ctx.ellipse(sx, sy, sr, sr*0.72, 0, 0, 7); ctx.fill();
-    ctx.fillStyle = 'rgba(200,196,180,0.7)';
-    ctx.beginPath(); ctx.ellipse(sx - sr*0.2, sy - sr*0.25, sr*0.5, sr*0.34, 0, 0, 7); ctx.fill();
-    ctx.strokeStyle = 'rgba(90,94,90,0.5)';
-    ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.ellipse(sx, sy, sr, sr*0.72, 0, 0, 7); ctx.stroke();
+  const shoreH = Math.max(16, shoreBot - shoreTop);
+  const k = Math.min(1.6, Math.max(0.85, shoreH/20));   // 岸高缩放
+  const wave = (x, ph) => Math.sin(x*0.02 + t*0.0011 + ph)*4.5 + Math.sin(x*0.007 + t*0.0005 + ph*2)*2.7 + Math.sin(x*0.045 + t*0.002)*1.6;
+  const rnd = (i) => { const s = Math.sin(i*127.1 + 311.7)*43758.5453; return s - Math.floor(s); };
+  const stonePts = (cx, cy, r, seed, flat) => {
+    const n = 6 + Math.floor(rnd(seed)*2);
+    const pts = [];
+    for(let i2=0;i2<n;i2++){
+      const a = i2/n*Math.PI*2 + rnd(seed + i2*7)*0.9;
+      const rr = r*(0.72 + rnd(seed + i2*13)*0.55);
+      pts.push([cx + Math.cos(a)*rr, cy + Math.sin(a)*rr*(flat?0.55:0.82)]);
+    }
+    return pts;
+  };
+  const trace = (pts) => { ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]); for(let i2=1;i2<pts.length;i2++) ctx.lineTo(pts[i2][0], pts[i2][1]); ctx.closePath(); };
+  const layers = [
+    { y: 0.94, r: 13.5, dark: 0,   off: 0,  step: 17 },   // 底层大石（近水，湿色深）
+    { y: 0.58, r: 11.5, dark: 0.07, off: 8, step: 16 },   // 中层错缝
+    { y: 0.22, r: 9.5,  dark: 0.14, off: 4, step: 15 }    // 顶层小石（近森林，干色亮）
+  ];
+  for(let L=0;L<layers.length;L++){
+    const ly = layers[L];
+    const n = Math.ceil(W/ly.step) + 1;
+    for(let i=0;i<n;i++){
+      const x = i*ly.step + ly.off + (rnd(L*991 + i)*6 - 3);
+      const wv = wave(x, L*1.7);
+      const y = shoreTop + shoreH*ly.y + wv*(0.35 + L*0.15);
+      const r = ly.r*k*(0.82 + rnd(L*31 + i)*0.36);
+      const seed = L*1000 + i;
+      const g = 98 + L*13 + Math.floor(rnd(seed)*14);          // 层越高越亮
+      const base = (g - 6) + ',' + (g + 2) + ',' + (g + 10);
+      const pts = stonePts(x, y, r, seed, L===0);
+      /* 石体 */
+      ctx.fillStyle = 'rgba(' + base + ',0.97)';
+      trace(pts); ctx.fill();
+      /* 顶面亮光 */
+      ctx.fillStyle = 'rgba(216,214,200,' + (0.5 - L*0.07) + ')';
+      trace(stonePts(x - r*0.12, y - r*0.18, r*0.6, seed + 50, L===0)); ctx.fill();
+      /* 底部阴影 */
+      ctx.fillStyle = 'rgba(36,40,44,' + (0.22 + L*0.05) + ')';
+      trace(stonePts(x + r*0.15, y + r*0.24, r*0.46, seed + 99, L===0)); ctx.fill();
+      /* 石缝描边 */
+      ctx.strokeStyle = 'rgba(46,50,54,0.42)';
+      ctx.lineWidth = 1;
+      trace(pts); ctx.stroke();
+    }
   }
   /* 湖岸线高光（水岸交界，弯曲波浪，晨光亮白） */
   const amp = 4.5*(1-still*0.85);
