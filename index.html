@@ -79,6 +79,7 @@ textarea:focus{border-color:#5a92b8;box-shadow:0 0 0 3px rgba(90,146,184,.2)}
     <a onclick="checkIn()"><span class="ic">●</span><span id="lblIn">今日到场</span></a>
     <a onclick="toggleSound()"><span class="ic">♪</span><span id="lblSound">湖的声音</span></a>
     <a onclick="openHow()"><span class="ic">?</span><span id="lblHow">说明</span></a>
+    <a onclick="openDis()"><span class="ic">⚠</span><span id="lblDis">免责</span></a>
   </div>
 </header>
 <div class="hint" id="hint">石头从空中落入湖心 · 泛起涟漪 · 沉入看不见的深处</div>
@@ -142,19 +143,27 @@ textarea:focus{border-color:#5a92b8;box-shadow:0 0 0 3px rgba(90,146,184,.2)}
 
 <div class="modal" id="mHow">
   <div class="card">
-    <h3>沉砾 · 说明</h3>
+    <h3>沉砾 · 说明 / About</h3>
     <p>晨光里的瓦尔登湖：远处是森林、远山与一栋木屋；眼前是整片清透的湖面。每一次"不逃"——写一句真实、安静坐一会儿、今天到场——都有一块石头从空中落入湖心，泛起涟漪，然后沉入深处。</p>
     <p>石头沉下去的地方，会亮起一颗 <b style="color:#8a6d2f">金色星光</b>——湖面下的光点越多，说明你积累的砾石越多。当石头积累到 <b style="color:#8a6d2f">20 块</b>，湖水会退去，露出它们压成的基岩。</p>
     <p><b style="color:#8a6d2f">这不是游戏。</b>无奖励、无成就、无红点。可以不打开，石头仍在；几天不来，只是沉积得更深。</p>
     <p class="sub">· 点击湖面，泛起涟漪；点击天空，惊起飞鸟<br>
     · 静坐时湖水与鸟鸣会慢慢安静下来<br>
     · 湖声为真实录音：水波 · 鸟鸣<br>
-    · 数据只存本机，不上传、不联网、零追踪<br>
-    · 与「清欢 GentleJoy」互为姊妹：清欢给光，沉砾接住暗<br>
-    · 本工具是自我觉察的辅助载体，不替代心理咨询或治疗</p>
+    · 数据只存本机，不上传、不联网、零追踪</p>
+    <hr style="border:none;border-top:1px dashed #c3d4e4;margin:14px 0">
+    <p><b style="color:#8a6d2f">English</b></p>
+    <p>This is a Walden-like lake in the morning light. Every time you do not run away — writing one true sentence, sitting still for a while, showing up today — a stone falls from the sky into the lake, ripples, and sinks into the deep.</p>
+    <p>Where a stone sinks, a <b style="color:#8a6d2f">golden star</b> lights up underwater. The more stones you gather, the more lights you see. When you reach <b style="color:#8a6d2f">20 stones</b>, the water will recede to reveal the bedrock they have formed.</p>
+    <p><b style="color:#8a6d2f">This is not a game.</b> No rewards, no achievements, no badges. You may stay away — the stones remain, settling deeper.</p>
+    <p class="sub">· Click the lake for ripples; click the sky to startle birds<br>
+    · While sitting, the water and birdsong slowly quiet down<br>
+    · Lake sounds are real recordings: water · birds<br>
+    · Data stays on this device only. No uploads, no tracking</p>
+    <p class="sub" style="margin-top:10px;color:#8a6d2f">Sister of GentleJoy · 与「清欢」互为姊妹</p>
     <div class="row">
       <div class="btn ghost" onclick="resetAll()">清空一切（慎）</div>
-      <div class="btn main" onclick="closeModal('mHow')">知道了</div>
+      <div class="btn main" onclick="closeModal('mHow')">知道了 / Got it</div>
     </div>
   </div>
 </div>
@@ -171,6 +180,26 @@ textarea:focus{border-color:#5a92b8;box-shadow:0 0 0 3px rgba(90,146,184,.2)}
     <p class="sub">没有任务，没有截止日期。什么时候来，湖都在这里。</p>
     <div class="row">
       <div class="btn gold" onclick="closeModal('mGuide');openWrite()">写第一句真实</div>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="mDis">
+  <div class="card">
+    <h3>免责声明 · Disclaimer</h3>
+    <p><b style="color:#8a6d2f">中文</b></p>
+    <p class="sub">· 「沉砾」是自我觉察与内省辅助工具，不构成医疗、心理、法律或理财等专业意见。<br>
+    · 若你正处于情绪低谷或有自伤念头，请及时寻求专业帮助：全国心理援助热线 <b>12356</b>（24 小时）；北京心理危机干预中心 <b>010-82951332</b>；紧急情况请拨打 <b>120</b>。<br>
+    · 所有数据仅存于你的设备浏览器中，不采集、不上传、不追踪。<br>
+    · 内容按现状提供，作者不对使用本应用产生的任何后果承担责任。</p>
+    <hr style="border:none;border-top:1px dashed #c3d4e4;margin:14px 0">
+    <p><b style="color:#8a6d2f">English</b></p>
+    <p class="sub">· Sedgrit is a self-awareness and reflection aid. It does not provide medical, psychological, legal or financial advice.<br>
+    · If you are going through a hard time or having thoughts of self-harm, please seek professional help: China National Mental Health Hotline <b>12356</b> (24h); Beijing Crisis Intervention Center <b>010-82951332</b>; in emergency call <b>120</b>.<br>
+    · All data stays in your browser. No collection, no uploads, no tracking.<br>
+    · Provided as-is; the author assumes no liability for any consequences of use.</p>
+    <div class="row">
+      <div class="btn main" onclick="closeModal('mDis')">知道了 / Got it</div>
     </div>
   </div>
 </div>
@@ -283,7 +312,7 @@ function resize(){
   H = window.innerHeight || canvas.clientHeight || 600;
   canvas.width = W*dpr; canvas.height = H*dpr;
   ctx.setTransform(dpr,0,0,dpr,0,0);
-  SURFACE = H*0.62;      // 湖面线：远景（森林远山木屋天空）占 62%，湖面在下方
+  SURFACE = H*0.70;      // 湖面线：远景占 70%，湖面窄带在下方（木屋远离水线）
 }
 window.addEventListener('resize', resize);
 
@@ -715,6 +744,7 @@ document.getElementById('wText').addEventListener('keydown', e=>{
   if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); dropWrite(); }
 });
 function openHow(){ showModal('mHow'); }
+function openDis(){ showModal('mDis'); }
 function resetAll(){
   if(confirm('清空全部砾石与记录？此操作不可恢复。')){
     localStorage.removeItem(LS);
