@@ -91,7 +91,7 @@ textarea:focus{border-color:#5a92b8;box-shadow:0 0 0 3px rgba(90,146,184,.2)}
   <div id="prog"><i id="progBar"></i></div>
   <span class="muted" id="stProgTxt">基岩 0/20</span>
 </div>
-<div class="foot">清欢给光 · 沉砾接住暗 —— 姊妹篇</div>
+<div class="foot">清欢给光 · 沉砾接住暗 —— 姊妹篇<br>© 永远的兰兰 · Lanlan Eternal</div>
 <div id="tip"></div>
 <div id="err" style="position:fixed;bottom:44px;left:50%;transform:translateX(-50%);z-index:99;background:#2a1418;color:#e0877f;font-size:12px;padding:6px 14px;border-radius:8px;display:none;max-width:80%"></div>
 
@@ -161,6 +161,7 @@ textarea:focus{border-color:#5a92b8;box-shadow:0 0 0 3px rgba(90,146,184,.2)}
     · Lake sounds are real recordings: water · birds<br>
     · Data stays on this device only. No uploads, no tracking</p>
     <p class="sub" style="margin-top:10px;color:#8a6d2f">Sister of GentleJoy · 与「清欢」互为姊妹</p>
+    <p class="sub" style="margin-top:6px;color:#5c6c86">© 永远的兰兰 · Lanlan Eternal</p>
     <div class="row">
       <div class="btn ghost" onclick="resetAll()">清空一切（慎）</div>
       <div class="btn main" onclick="closeModal('mHow')">知道了 / Got it</div>
@@ -724,6 +725,7 @@ function drawShore(){
   const shoreH = Math.max(16, shoreBot - shoreTop);
   const k = Math.min(1.6, Math.max(0.85, shoreH/20));   // 岸高缩放
   const wave = (x, ph) => Math.sin(x*0.02 + t*0.0011 + ph)*4.5 + Math.sin(x*0.007 + t*0.0005 + ph*2)*2.7 + Math.sin(x*0.045 + t*0.002)*1.6;
+  const bankY = (x, ph) => Math.sin(x*0.02 + ph)*4.5 + Math.sin(x*0.007 + ph*2)*2.7 + Math.sin(x*0.045)*1.6;   // 岸堤静态起伏（石头不随水动）
   const rnd = (i) => { const s = Math.sin(i*127.1 + 311.7)*43758.5453; return s - Math.floor(s); };
   const stonePts = (cx, cy, r, seed, flat) => {
     const n = 6 + Math.floor(rnd(seed)*2);
@@ -746,7 +748,7 @@ function drawShore(){
     const n = Math.ceil(W/ly.step) + 1;
     for(let i=0;i<n;i++){
       const x = i*ly.step + ly.off + (rnd(L*991 + i)*6 - 3);
-      const wv = wave(x, L*1.7);
+      const wv = bankY(x, L*1.7);   // 岸堤固定，不随水波动
       const y = shoreTop + shoreH*ly.y + wv*(0.35 + L*0.15);
       const r = ly.r*k*(0.82 + rnd(L*31 + i)*0.36);
       const seed = L*1000 + i;
